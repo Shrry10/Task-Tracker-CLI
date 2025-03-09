@@ -56,7 +56,7 @@ const updateTask = async () => {
     {
       type: "list",
       name: "option",
-      message: "Choose one to update: ",
+      message: "Choose a field to update: ",
       choices: ["description", "status"],
     },
     {
@@ -69,17 +69,92 @@ const updateTask = async () => {
     },
   ]);
 
-  let index = answers.taskindex;
+  const index = answers.taskindex;
   if (index >= 0 && index < tasks.length) {
     if (answers.option == "description") {
       tasks[index].description = answers.update;
     } else if (answers.option == "status") {
       tasks[index].status = answers.update;
     }
+    tasks[index].updatedAt = Date.now();
     saveTasks();
     console.log("updated");
   } else {
     console.log("Invalid index");
+  }
+};
+
+const deleteTask = async () => {
+  if (tasks.length == 0) {
+    console.log("no tasks to delete");
+    return;
+  }
+
+  const answers = await inquirer.prompt([
+    {
+      type: "list",
+      name: "taskindex",
+      message: "Choose a task to delete: ",
+      choices: tasks.map((task, index) => ({
+        name: task.description,
+        value: index,
+      })),
+    },
+  ]);
+
+  const index = answers.taskindex;
+  if (index >= 0 && index < tasks.length) {
+    tasks.splice(index, 1);
+    saveTasks();
+    console.log("deleted");
+  } else {
+    console.log("Invalid index");
+  }
+};
+
+const listTasks = async () => {
+  if (tasks.length == 0) {
+    console.log("no tasks present");
+    return;
+  }
+
+  const answers = await inquirer.prompt([
+    {
+      type: "list",
+      name: "status",
+      message: "Choose a status-type to list: ",
+      choices: ["all", "done", "not-done", "in-progress"],
+    },
+  ]);
+
+  console.log("list of the tasks (✗ => to-do, O => in-progress, ✓ => done): ");
+  if (answers.status == "all") {
+    tasks.forEach((task, index) => {
+      let stat =
+        task.status == "to-do" ? "✗" : task.status == "done" ? "✓" : "O";
+      console.log(`${index + 1}. ${stat} ${task.description}`);
+    });
+  } else if (answers.status == "done") {
+    let serial = 0;
+    tasks.forEach((task, index) => {
+      if (task.status == "done") {
+        console.log(`${++serial}. ${task.description}`);
+      }
+    });
+  } else if (answers.status == "not-done") {
+    let serial = 0;
+    tasks.forEach((task, index) => {
+      if (task.status !== "done") {
+        console.log(`${++serial}. ${task.description}`);
+      }
+    });
+  } else if (answers.status == "in-progress") {
+    let serial = 0;
+    tasks.forEach((task, index) => {
+      if (task.status == "in-progress") {
+        console.log(`${++serial}. ${task.description}`);
+      }
+    });
   }
 };
 
@@ -93,7 +168,7 @@ const menu = async () => {
         "add a task",
         "update a task",
         "delete a task",
-        "list all tasks",
+        "list tasks",
         "exit",
       ],
     },
@@ -105,7 +180,7 @@ const menu = async () => {
     await updateTask();
   } else if (answers.option == "delete a task") {
     await deleteTask();
-  } else if (answers.option == "lists all tasks") {
+  } else if (answers.option == "list tasks") {
     await listTasks();
   } else if (answers.option == "exit") {
     process.exit();
