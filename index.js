@@ -188,7 +188,7 @@ const menu = async () => {
     {
       type: "list",
       name: "option",
-      message: "\nChoose an action: ",
+      message: "Choose an action: ",
       choices: [
         "add a task",
         "update a task",

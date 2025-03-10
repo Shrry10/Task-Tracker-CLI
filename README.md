@@ -79,8 +79,8 @@ To remove the CLI tool:
 npm unlink
 ```
 
-## License
-This project is licensed under the **MIT License**.
+<!-- ## License
+This project is licensed under the **MIT License**. -->
 
 ---
 **Happy Tracking! 🚀**
