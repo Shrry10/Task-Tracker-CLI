@@ -1,18 +1,20 @@
 #!/usr/bin/env node
 
+// Run : npx tasktracker
+
 import inquirer from "inquirer";
 import fs from "fs";
 
 const taskfile = "./tasks.txt";
-let count = 0;
 
 if (!fs.existsSync(taskfile)) {
   fs.writeFileSync(taskfile, JSON.stringify([]));
 }
 
 let tasks = JSON.parse(fs.readFileSync(taskfile));
+let count = tasks.length > 0 ? Math.max(...tasks.map((task) => task.id)) : 0;
 
-const saveTasks = async () => {
+const saveTasks = () => {
   fs.writeFileSync(taskfile, JSON.stringify(tasks, null, 2));
 };
 
@@ -22,6 +24,9 @@ const addTask = async () => {
       type: "input",
       name: "taskinfo",
       message: "Enter the task: ",
+      validate: (input) => {
+        return input.trim() !== "" ? true : "details cannot be empty";
+      },
     },
   ]);
 
@@ -34,12 +39,12 @@ const addTask = async () => {
   });
 
   saveTasks();
-  console.log("new task added");
+  console.log("✅ new task added");
 };
 
 const updateTask = async () => {
   if (tasks.length == 0) {
-    console.log("no tasks to update");
+    console.log("⚠️ no tasks to update");
     return;
   }
 
@@ -59,34 +64,45 @@ const updateTask = async () => {
       message: "Choose a field to update: ",
       choices: ["description", "status"],
     },
-    {
-      type: "input",
-      name: "update",
-      message: "Enter the update: ",
-      validate: (input) => {
-        return input.trim() !== "" ? true : "details cannot be empty";
-      },
-    },
   ]);
 
   const index = answers.taskindex;
   if (index >= 0 && index < tasks.length) {
     if (answers.option == "description") {
-      tasks[index].description = answers.update;
-    } else if (answers.option == "status") {
-      tasks[index].status = answers.update;
+      const { update } = await inquirer.prompt([
+        {
+          type: "input",
+          name: "update",
+          message: "Enter the new description: ",
+          validate: (input) => {
+            return input.trim() !== "" ? true : "details cannot be empty";
+          },
+        },
+      ]);
+      tasks[index].description = update;
+    } else {
+      const { update } = await inquirer.prompt([
+        {
+          type: "list",
+          name: "update",
+          message: "Choose new status: ",
+          choices: ["to-do", "in-progress", "done"],
+        },
+      ]);
+      tasks[index].status = update;
     }
     tasks[index].updatedAt = Date.now();
     saveTasks();
-    console.log("updated");
+    console.log("✅ updated");
   } else {
     console.log("Invalid index");
+    return;
   }
 };
 
 const deleteTask = async () => {
   if (tasks.length == 0) {
-    console.log("no tasks to delete");
+    console.log("⚠️ no tasks to delete");
     return;
   }
 
@@ -106,15 +122,16 @@ const deleteTask = async () => {
   if (index >= 0 && index < tasks.length) {
     tasks.splice(index, 1);
     saveTasks();
-    console.log("deleted");
+    console.log("🗑️ deleted");
   } else {
     console.log("Invalid index");
+    return;
   }
 };
 
 const listTasks = async () => {
   if (tasks.length == 0) {
-    console.log("no tasks present");
+    console.log("⚠️ no tasks present");
     return;
   }
 
@@ -123,11 +140,13 @@ const listTasks = async () => {
       type: "list",
       name: "status",
       message: "Choose a status-type to list: ",
-      choices: ["all", "done", "not-done", "in-progress"],
+      choices: ["all", "done", "to-do", "in-progress"],
     },
   ]);
 
-  console.log("list of the tasks (✗ => to-do, O => in-progress, ✓ => done): ");
+  console.log(
+    "\n📌 list of the tasks (✗ => to-do, O => in-progress, ✓ => done): "
+  );
   if (answers.status == "all") {
     tasks.forEach((task, index) => {
       let stat =
@@ -135,25 +154,31 @@ const listTasks = async () => {
       console.log(`${index + 1}. ${stat} ${task.description}`);
     });
   } else if (answers.status == "done") {
-    let serial = 0;
-    tasks.forEach((task, index) => {
-      if (task.status == "done") {
-        console.log(`${++serial}. ${task.description}`);
-      }
+    let filteredTasks = tasks.filter((task) => task.status == "done");
+    if (filteredTasks.length === 0) {
+      console.log("⚠️ no tasks found in this category");
+      return;
+    }
+    filteredTasks.forEach((task, index) => {
+      console.log(`${++index}. ✓ ${task.description}`);
     });
-  } else if (answers.status == "not-done") {
-    let serial = 0;
-    tasks.forEach((task, index) => {
-      if (task.status !== "done") {
-        console.log(`${++serial}. ${task.description}`);
-      }
+  } else if (answers.status == "to-do") {
+    let filteredTasks = tasks.filter((task) => task.status == "to-do");
+    if (filteredTasks.length === 0) {
+      console.log("⚠️ no tasks found in this category");
+      return;
+    }
+    filteredTasks.forEach((task, index) => {
+      console.log(`${++index}. ✗ ${task.description}`);
     });
-  } else if (answers.status == "in-progress") {
-    let serial = 0;
-    tasks.forEach((task, index) => {
-      if (task.status == "in-progress") {
-        console.log(`${++serial}. ${task.description}`);
-      }
+  } else {
+    let filteredTasks = tasks.filter((task) => task.status == "in-progress");
+    if (filteredTasks.length === 0) {
+      console.log("⚠️ no tasks found in this category");
+      return;
+    }
+    filteredTasks.forEach((task, index) => {
+      console.log(`${++index}. O ${task.description}`);
     });
   }
 };
@@ -163,7 +188,7 @@ const menu = async () => {
     {
       type: "list",
       name: "option",
-      message: "Select the action you want to perform: ",
+      message: "\nChoose an action: ",
       choices: [
         "add a task",
         "update a task",
